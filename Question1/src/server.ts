@@ -5,11 +5,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const port = 9876;
+const port = process.env.PORT || 9876;
 
 const API_TOKEN = process.env.API_TOKEN;
 
 let numbers: number[] = [];
+let prevState: number[] = [];
 
 const apiEndpoints: { [key: string]: string } = {
     p: 'http://20.244.56.144/test/primes',
@@ -19,12 +20,13 @@ const apiEndpoints: { [key: string]: string } = {
 };
 
 app.get('/numbers/:numberId', async (req: Request, res: Response) => {
-    console.log(API_TOKEN);
     const numberId = req.params.numberId;
     const endpoint = apiEndpoints[numberId];
     if (!endpoint) {
         return res.status(404).json({ error: 'Invalid number ID' });
     }
+
+    prevState = [...numbers];
 
     try {
         const response = await axios.get(endpoint, {
@@ -33,7 +35,7 @@ app.get('/numbers/:numberId', async (req: Request, res: Response) => {
                 Authorization: `Bearer ${API_TOKEN}`
             }
         });
-        numbers = response.data.numbers;
+        numbers = [...numbers, ...response.data.numbers].slice(-10);
     } catch (error) {
         const typedError = error as Error;
         return res.status(500).json({ error: 'Failed to fetch number from external API', details: typedError.message });
@@ -41,8 +43,8 @@ app.get('/numbers/:numberId', async (req: Request, res: Response) => {
 
     const average = numbers.reduce((acc, cur) => acc + cur, 0) / numbers.length;
     res.json({
-        windowPrevState: numbers.slice(0, numbers.length - 1),
-        windowCurrState: numbers,
+        windowPrevState: prevState,
+        windowCurrState: numbers,  
         numbers,
         avg: average.toFixed(2)
     });
