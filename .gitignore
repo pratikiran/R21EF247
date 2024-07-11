@@ -1,0 +1,4 @@
+register.json
+authentication.json
+node_modules
+.env
